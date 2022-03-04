@@ -3,6 +3,6 @@ const router = express.Router();
 
 const newsService = require('../services/news.service');
 
-router.get('/', newsService.getTopHeadlines);
+router.get('/', newsService.getData);
 
 module.exports = router;
