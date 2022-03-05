@@ -193,11 +193,19 @@ module.exports = {
         }
     },
     getSources: (req, res) => {
+        const country = req.query?.country || DEFAULT_COUNTRY;
+        const countryCode = country?.length === 2 ? country : DEFAULT_COUNTRY;
         const filePath = path.resolve(__dirname, `../${DATA_FOLDER_NAME}/sources.json`);
 
         return readFile(filePath, 'utf8').then(fileContent => {
             let fileContentJson = fileContent && JSON.parse(fileContent) || { sources: [] };
-            return res.status(200).json({ sources: fileContentJson.sources });
+            let sourcesForSpecifiedCountry = fileContentJson.sources.filter(source => source.country === countryCode);
+
+            if (sourcesForSpecifiedCountry.length > 8) {
+                sourcesForSpecifiedCountry = sourcesForSpecifiedCountry.slice(0, 8);
+            }
+
+            return res.status(200).json({ sources: sourcesForSpecifiedCountry.length ? sourcesForSpecifiedCountry : fileContentJson.sources });
         }).catch(err => {
             return res.status(502).json(err);
         });
