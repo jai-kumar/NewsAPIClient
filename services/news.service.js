@@ -8,7 +8,7 @@ const { cronObj } = require('./cron.service');
 const { makeRequest } = require('./request.service');
 
 const DATA_FOLDER_NAME = 'data';
-const NEWS_API_KEY = 'b09cb9cbfdcb432885e69f93d010e2a0';
+const NEWS_API_KEY = process.env.NEWS_API_KEY || 'b09cb9cbfdcb432885e69f93d010e2a0';
 const COUNTRY = [
     {
         code: "in",
@@ -108,7 +108,6 @@ const updateFiles = async (c, country = DEFAULT_COUNTRY) => {
     const filePath = path.resolve(__dirname, `../${DATA_FOLDER_NAME}/${countryCode}/${fileName}.json`);
 
     await readFile(filePath, 'utf8').then(async (fileContent) => {
-        console.log('fileContent: ',fileContent);
         let fileContentJson = fileContent && JSON.parse(fileContent) || { articles: [] };
         if (fileContentJson && fileContentJson.articles?.length < 80) {
             // write more articles to json
@@ -151,12 +150,16 @@ const updateInUseStatus = (country) => {
     const countryIndex = getCountryIndex(country);
     const dateNow = new Date();
     const lastUpdatedDate = COUNTRY[countryIndex].lastUpdatedOn;
-    const diff = getTimeDiffInMinutes(lastUpdatedDate, dateNow);
-
-    if(diff > 60) {
+    if (lastUpdatedDate === '') {
         COUNTRY[countryIndex].inUse = false;
     } else {
-        COUNTRY[countryIndex].inUse = true;
+        const diff = getTimeDiffInMinutes(lastUpdatedDate, dateNow);
+
+        if(diff > 60) {
+            COUNTRY[countryIndex].inUse = false;
+        } else {
+            COUNTRY[countryIndex].inUse = true;
+        }
     }
 }
 
@@ -173,9 +176,11 @@ module.exports = {
 
         const readAndReturn = () => {
             return readFile(filePath, 'utf8').then(fileContent => {
+                console.log('reading completed!');
                 let fileContentJson = fileContent && JSON.parse(fileContent) || { articles: [] };
                 return res.status(200).json({ articles: fileContentJson.articles });
             }).catch(err => {
+                console.log('error reading file!');
                 return res.status(502).json(err);
             });
         }
