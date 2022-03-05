@@ -47,7 +47,7 @@ const COUNTRY = [
         lastUpdatedOn: ''
     },
 ];
-const DEFAULT_COUNTRY = COUNTRY[0].code;
+const DEFAULT_COUNTRY = COUNTRY[5].code;
 const REQUEST_MAP_COUNTER = [
     "top-headlines",
     "business",
@@ -108,6 +108,7 @@ const updateFiles = async (c, country = DEFAULT_COUNTRY) => {
     const filePath = path.resolve(__dirname, `../${DATA_FOLDER_NAME}/${countryCode}/${fileName}.json`);
 
     await readFile(filePath, 'utf8').then(async (fileContent) => {
+        console.log('fileContent: ',fileContent);
         let fileContentJson = fileContent && JSON.parse(fileContent) || { articles: [] };
         if (fileContentJson && fileContentJson.articles?.length < 80) {
             // write more articles to json
