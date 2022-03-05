@@ -28,7 +28,7 @@ module.exports = {
 					finalCb();
 					clearInterval(intervalId);
 				}
-			}, 10000);
+			}, 5000);
 		}
 	}
 }
