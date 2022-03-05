@@ -11,7 +11,13 @@
     "type": "git",
     "url": "git+https://github.com/jai-kumar/NewsAPIClient.git"
   },
-  "keywords": [],
+  "keywords": [
+    "new app",
+    "news daily",
+    "in shosts",
+    "short news",
+    "60 words news"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -27,5 +33,8 @@
   },
   "devDependencies": {
     "nodemon": "^2.0.15"
+  },
+  "engines": {
+    "node": "16.13.2"
   }
 }
