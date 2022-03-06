@@ -155,12 +155,57 @@ const updateInUseStatus = (country) => {
     } else {
         const diff = getTimeDiffInMinutes(lastUpdatedDate, dateNow);
 
-        if(diff > 60) {
+        if (diff > 60) {
             COUNTRY[countryIndex].inUse = false;
         } else {
             COUNTRY[countryIndex].inUse = true;
         }
     }
+}
+
+const readFromAllFiles = (countryCode, cb) => {
+    const directoryPath = path.join(__dirname, `../${DATA_FOLDER_NAME}/${countryCode}`);
+    fs.readdir(directoryPath, async (err, files) => {
+        //handling error
+        if (err) {
+            return console.log('Unable to scan directory: ' + err);
+        }
+
+        files = files.filter(file => file !== 'allArticles.json');
+
+        let allArticlesPath = path.join(__dirname, `../${DATA_FOLDER_NAME}/${countryCode}/allArticles.json`);
+        let filesResults = files.map((file) => {
+            let filepath = path.join(__dirname, `../${DATA_FOLDER_NAME}/${countryCode}/${file}`)
+            return readFile(filepath, 'utf8');
+        });
+
+        Promise.all(filesResults) // Read all files
+            .then((data) => { // data will be a array of the data in the files
+                const outData = data.reduce((a, b) => {
+                    let aa = a;
+                    if (typeof a === 'string') {
+                        aa = JSON.parse(a);
+                    }
+                    let bb = JSON.parse(b);
+
+                    if (aa.articles) {
+                        return [...aa.articles, ...bb.articles];
+                    }
+                    return [...aa, ...bb.articles];// concatenate the data
+                });
+
+                let fileContentString = JSON.stringify({ "articles": outData });
+                return writeFile(allArticlesPath, fileContentString, 'utf8').then(res => {
+                    cb(fileContentString);
+                });
+            })
+            .then((res) => {
+                console.log('OK');
+            })
+            .catch((error) => {
+                console.error('err:',error);
+            });
+    });
 }
 
 cronObj.start(updateFiles);
@@ -208,6 +253,30 @@ module.exports = {
             return res.status(200).json({ sources: sourcesForSpecifiedCountry.length ? sourcesForSpecifiedCountry : fileContentJson.sources });
         }).catch(err => {
             return res.status(502).json(err);
+        });
+    },
+    getDataFromSource: (req, res) => {
+        const sourceId = req.query?.sourceId || undefined;
+        const country = req.query?.country || DEFAULT_COUNTRY;
+        const countryCode = country?.length === 2 ? country : DEFAULT_COUNTRY;
+
+        readFromAllFiles(countryCode, (response) => {
+            let allArticles = JSON.parse(response);
+            let filteredArticles = allArticles.articles.filter(article => {
+                if (sourceId) {
+                    return article.source.id === sourceId
+                }
+                return true;
+            });
+            if (!filteredArticles.length) {
+                filteredArticles = allArticles.articles.filter(article => {
+                    if (sourceId) {
+                        return article.source.id === 'google-news'
+                    }
+                    return true;
+                });
+            }
+            return res.status(200).json({ "articles": filteredArticles });
         });
     }
 }
