@@ -264,9 +264,14 @@ module.exports = {
             let allArticles = JSON.parse(response);
             let filteredArticles = allArticles.articles.filter(article => {
                 if (sourceId) {
-                    return article.source.id === sourceId
+                    return (
+                        article.source.id?.toLowerCase() === sourceId.toLowerCase() ||
+                        article.source.name?.toLowerCase().includes(sourceId.toLowerCase()) ||
+                        article.source.id?.toLowerCase().includes(sourceId.toLowerCase())
+                    )
+                } else {
+                    return true;
                 }
-                return true;
             });
             if (!filteredArticles.length) {
                 filteredArticles = allArticles.articles.filter(article => {
