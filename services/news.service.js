@@ -6,9 +6,12 @@ const readFile = util.promisify(fs.readFile);
 const writeFile = util.promisify(fs.writeFile);
 const { cronObj } = require('./cron.service');
 const { makeRequest } = require('./request.service');
+const { db } = require('../firebase');
+const { get, ref, child, remove } = require('firebase/database');
+const { startSendingNotifications, getDataForNotifications } = require('./notification.service');
 
 const DATA_FOLDER_NAME = 'data';
-const NEWS_API_KEY = process.env.NEWS_API_KEY || 'b09cb9cbfdcb432885e69f93d010e2a0';
+const NEWS_API_KEY = process.env.NEWS_API_KEY;
 const COUNTRY = [
     {
         code: "in",
@@ -58,6 +61,14 @@ const REQUEST_MAP_COUNTER = [
     "sports",
     "technology"
 ];
+
+/*
+    @desc: Gets unique values from array.
+    Returns: Array
+*/
+const getUniqueListBy = (arr, key) => {
+    return [...new Map(arr.map(item => [item[key], item])).values()]
+}
 
 const updateFiles = async (c, country = DEFAULT_COUNTRY) => {
     let url = `http://newsapi.org/v2/top-headlines?country=${country}&apiKey=${NEWS_API_KEY}`;
@@ -146,6 +157,10 @@ const isCountryInUse = (country) => {
     return COUNTRY[countryIndex].inUse;
 }
 
+/*
+Country should have been used within 60 mins to mark inUse true.
+If not in use then we update it to inUse true, because a request is made .
+*/
 const updateInUseStatus = (country) => {
     const countryIndex = getCountryIndex(country);
     const dateNow = new Date();
@@ -163,7 +178,7 @@ const updateInUseStatus = (country) => {
     }
 }
 
-const readFromAllFiles = (countryCode, cb) => {
+const readFromAllFiles = (countryCode = DEFAULT_COUNTRY, cb) => {
     const directoryPath = path.join(__dirname, `../${DATA_FOLDER_NAME}/${countryCode}`);
     fs.readdir(directoryPath, async (err, files) => {
         //handling error
@@ -208,7 +223,28 @@ const readFromAllFiles = (countryCode, cb) => {
     });
 }
 
+const cbToRemoveFromDB = (token) => {
+    console.log('Deleting ${token} from DB...');
+    remove(ref(db, `tokens/${token}`));
+}
+
+const getDevicesTokensAndSendNotification = (countryCode = 'gb') => {
+    get(child(ref(db), `tokens`)).then((snapshot) => {
+        const allTokens = Object.keys(snapshot.val());
+        getDataForNotifications(countryCode).then(data => {
+            let dataToSend = {};
+
+            dataToSend = data[Math.floor(Math.random() * data.length)]; // get random from top 5 news
+            dataToSend.title = dataToSend.title.split(' - ')[0];
+            console.log('dataToSend: ',dataToSend);
+            startSendingNotifications(allTokens, cbToRemoveFromDB, dataToSend);
+        }).catch(err => {
+            console.error('Error while getting data for notifications: ',err);
+        });
+    });
+}
 cronObj.start(updateFiles);
+cronObj.startPushNotifications(getDevicesTokensAndSendNotification, DEFAULT_COUNTRY);
 
 module.exports = {
     getData: (req, res) => {
@@ -223,6 +259,7 @@ module.exports = {
             return readFile(filePath, 'utf8').then(fileContent => {
                 console.log('reading completed!');
                 let fileContentJson = fileContent && JSON.parse(fileContent) || { articles: [] };
+                fileContentJson.articles = getUniqueListBy(fileContentJson.articles, 'title')
                 return res.status(200).json({ articles: fileContentJson.articles });
             }).catch(err => {
                 console.log('error reading file!');
@@ -281,7 +318,12 @@ module.exports = {
                     return true;
                 });
             }
+            filteredArticles = getUniqueListBy(filteredArticles, 'title');
             return res.status(200).json({ "articles": filteredArticles });
         });
+    },
+    testNotification: () => {
+        // cronObj.startPushNotifications(getDevicesTokensAndSendNotification, DEFAULT_COUNTRY);
+        getDevicesTokensAndSendNotification();
     }
 }

@@ -14,7 +14,7 @@
   "keywords": [
     "new app",
     "news daily",
-    "in shosts",
+    "in shorts",
     "short news",
     "60 words news"
   ],
@@ -28,7 +28,9 @@
     "axios": "^0.26.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
+    "expo-server-sdk": "^3.6.0",
     "express": "^4.17.3",
+    "firebase": "^9.6.10",
     "newsapi": "^2.4.1"
   },
   "devDependencies": {
